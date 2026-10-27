@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Master iOS Glass HUD - Wellington Damasceno - Software Engineer & QA">
+    <title>Wellington Damasceno | Software Engineer & QA Master HUD</title>
+    
+    <style>
+        :root {
+            --accent-primary: #ff3b30; /* Vermelho inicial (Arco-íris 1) */
+            --accent-metallic: #ff453a;
+            --accent-amber: #ff6961;
+            
+            --glass-bg: rgba(15, 15, 20, 0.42);
+            --glass-border: rgba(255, 59, 48, 0.3);
+            --glass-highlight: rgba(255, 255, 255, 0.12);
+            --text-main: #f5f5f7;
+            --text-muted: #d1d1d6;
+            --terminal-color: #ff3b30;
+        }
+
+        /* 🌈 As 7 Cores do Arco-Íris em Estilo iOS Glassmorphism */
+        body.theme-red {
+            --accent-primary: #ff3b30;
+            --glass-border: rgba(255, 59, 48, 0.4);
+            --terminal-color: #ff3b30;
+        }
+        body.theme-orange {
+            --accent-primary: #ff9500;
+            --glass-border: rgba(255, 149, 0, 0.4);
+            --terminal-color: #ff9500;
+        }
+        body.theme-yellow {
+            --accent-primary: #ffcc00;
+            --glass-border: rgba(255, 204, 0, 0.4);
+            --terminal-color: #ffcc00;
+        }
+        body.theme-green {
+            --accent-primary: #30d158;
+            --glass-border: rgba(48, 209, 88, 0.4);
+            --terminal-color: #30d158;
+        }
+        body.theme-blue {
+            --accent-primary: #0a84ff;
+            --glass-border: rgba(10, 132, 255, 0.4);
+            --terminal-color: #0a84ff;
+        }
+        body.theme-indigo {
+            --accent-primary: #5e5ce6;
+            --glass-border: rgba(94, 92, 230, 0.4);
+            --terminal-color: #5e5ce6;
+        }
+        body.theme-violet {
+            --accent-primary: #af52de;
+            --glass-border: rgba(175, 82, 222, 0.4);
+            --terminal-color: #af52de;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+            transition: background-color 0.6s ease, border-color 0.6s ease;
+        }
+
+        body {
+            background-color: #000000;
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 24px;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Camada 1: Imagem de Fundo do Ultron (ultron.jpg) Fixa em Tela Cheia Absoluta */
+        .ultron-bg-layer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -3;
+            background: url('ultron.jpg') no-repeat center center fixed;
+            background-size: cover;
+            -webkit-background-size: cover;
+        }
+
+        /* Camada 2: Escurecimento iOS Dark Tint leve */
+        .ultron-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -2;
+            background: rgba(0, 0, 0, 0.55);
+            backdrop-filter: brightness(0.85);
+            -webkit-backdrop-filter: brightness(0.85);
+        }
+
+        /* Camada 3: Chuva Matrix Dinâmica */
+        canvas#matrixRain {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -1;
+            opacity: 0.22;
+            pointer-events: none;
+        }
+
+        .dashboard-grid {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+            gap: 24px;
+            padding: 20px 0;
+        }
+
+        /* iOS Glassmorphism Card Style (Translúcido) */
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px) saturate(190%);
+            -webkit-backdrop-filter: blur(20px) saturate(190%);
+            border: 1px solid var(--glass-border);
+            border-radius: 28px;
+            padding: 28px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5), 
+                        inset 0 0 0 1px var(--glass-highlight);
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.35s cubic-bezier(0.15, 0.85, 0.35, 1.2), border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .glass-card:hover {
+            transform: translateY(-6px) scale(1.008);
+            border-color: var(--accent-primary);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.7), 
+                        inset 0 0 0 1px var(--accent-primary);
+        }
+
+        header {
+            max-width: 1400px;
+            margin: 0 auto 30px auto;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px) saturate(190%);
+            -webkit-backdrop-filter: blur(20px) saturate(190%);
+            border: 1px solid var(--glass-border);
+            border-radius: 22px;
+            padding: 16px 28px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 14px 35px rgba(0,0,0,0.5);
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .logo-text {
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            background: linear-gradient(135deg, var(--text-main), var(--accent-primary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 1.05rem;
+        }
+
+        .hud-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .hud-btn, .lang-select {
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid var(--glass-border);
+            color: var(--text-main);
+            padding: 7px 14px;
+            border-radius: 14px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            outline: none;
+        }
+
+        .lang-select {
+            background: rgba(20, 20, 25, 0.7);
+        }
+
+        .lang-select option {
+            background: #1c1c1e;
+            color: var(--text-main);
+        }
+
+        .hud-btn:hover, .lang-select:hover {
+            background: var(--accent-primary);
+            color: #ffffff;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 15px var(--accent-primary);
+        }
+
+        /* Visualizador de Espectro iOS Glass */
+        .visualizer-container {
+            display: flex;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 4px 10px;
+            height: 35px;
+        }
+
+        canvas#audioVisualizer {
+            width: 90px;
+            height: 25px;
+            display: block;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.8rem;
+            color: var(--accent-primary);
+            font-weight: 600;
+        }
+
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--accent-primary);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--accent-primary);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.95); opacity: 0.6; }
+            50% { transform: scale(1.35); opacity: 1; box-shadow: 0 0 14px var(--accent-primary); }
+            100% { transform: scale(0.95); opacity: 0.6; }
+        }
+
+        nav ul {
+            display: flex;
+            list-style: none;
+            gap: 18px;
+            flex-wrap: wrap;
+        }
+
+        nav ul li a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.82rem;
+            transition: color 0.2s;
+        }
+
+        nav ul li a:hover {
+            color: var(--accent-primary);
+        }
+
+        h2 {
+            font-size: 1.15rem;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text-main);
+            font-weight: 700;
+        }
+
+        h2 span {
+            color: var(--accent-primary);
+        }
+
+        p, li {
+            color: var(--text-muted);
+            font-size: 0.88rem;
+            line-height: 1.6;
+        }
+
+        strong {
+            color: var(--text-main);
+            font-weight: 600;
+        }
+
+        .skills-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 14px;
+        }
+
+        /* iOS Pill Badges */
+        .badge {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid var(--glass-border);
+            color: var(--text-main);
+            padding: 6px 12px;
+            border-radius: 12px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            transition: all 0.25s ease;
+            cursor: pointer;
+        }
+
+        .badge:hover {
+            background: var(--accent-primary);
+            color: #ffffff;
+            border-color: var(--accent-primary);
+            box-shadow: 0 4px 12px var(--accent-primary);
+            transform: translateY(-2px);
+        }
+
+        .badge.amber {
+            border-color: var(--glass-border);
+            color: var(--accent-primary);
+        }
+
+        .badge.amber:hover {
+            background: var(--accent-primary);
+            color: #fff;
+        }
+
+        .timeline-item {
+            border-left: 2px solid var(--accent-primary);
+            padding-left: 14px;
+            margin-bottom: 14px;
+            position: relative;
+        }
+
+        .social-links-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .social-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid var(--glass-border);
+            color: var(--text-main);
+            padding: 12px;
+            border-radius: 16px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .social-btn:hover {
+            background: var(--accent-primary);
+            color: #ffffff;
+            border-color: var(--accent-primary);
+            box-shadow: 0 6px 20px var(--accent-primary);
+            transform: translateY(-3px);
+        }
+
+        .cli-container {
+            background: rgba(0, 0, 0, 0.45);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 14px;
+            margin-top: 12px;
+            box-shadow: inset 0 2px 6px rgba(0,0,0,0.5);
+        }
+
+        .cli-output {
+            font-family: SF Mono, Menlo, Monaco, Consolas, monospace;
+            font-size: 0.78rem;
+            color: var(--terminal-color);
+            min-height: 55px;
+            max-height: 85px;
+            overflow-y: auto;
+            margin-bottom: 8px;
+            white-space: pre-wrap;
+        }
+
+        .cli-input-line {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            padding-top: 8px;
+        }
+
+        .cli-prompt {
+            color: var(--terminal-color);
+            font-weight: bold;
+            font-family: SF Mono, Menlo, Monaco, Consolas, monospace;
+            font-size: 0.8rem;
+        }
+
+        .cli-input {
+            background: transparent;
+            border: none;
+            color: #ffffff;
+            font-family: SF Mono, Menlo, Monaco, Consolas, monospace;
+            font-size: 0.8rem;
+            width: 100%;
+            outline: none;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            font-weight: 700;
+            letter-spacing: 0.8px;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 10px 14px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid var(--glass-border);
+            border-radius: 14px;
+            color: white;
+            font-size: 0.85rem;
+            transition: 0.25s ease;
+            outline: none;
+        }
+
+        input:focus, textarea:focus {
+            border-color: var(--accent-primary);
+            background: rgba(255, 255, 255, 0.12);
+            box-shadow: 0 0 12px var(--accent-primary);
+        }
+
+        button[type="submit"] {
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-metallic));
+            color: #ffffff;
+            border: none;
+            padding: 12px;
+            font-weight: 700;
+            border-radius: 14px;
+            cursor: pointer;
+            transition: 0.25s ease;
+            letter-spacing: 0.5px;
+            margin-top: 6px;
+            box-shadow: 0 4px 15px var(--accent-primary);
+        }
+
+        button[type="submit"]:hover {
+            opacity: 0.92;
+            box-shadow: 0 6px 20px var(--accent-primary);
+            transform: scale(1.01);
+        }
+
+        footer {
+            max-width: 1400px;
+            margin: 30px auto 10px auto;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.78rem;
+            border-top: 1px solid var(--glass-border);
+            padding: 20px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+        }
+
+        footer a {
+            color: var(--accent-primary);
+            text-decoration: none;
+        }
+    </style>
+</head>
+
+<body class="theme-red">
+
+    <!-- Camadas de Fundo: Imagem Ultron (ultron.jpg) + Overlay + Chuva Matrix -->
+    <div class="ultron-bg-layer"></div>
+    <div class="ultron-overlay"></div>
+    <canvas id="matrixRain"></canvas>
+
+    <!-- Ficheiro de Áudio (ultron musica.mp3) -->
+    <audio id="bgMusic" loop preload="auto">
+        <source src="ultron musica.mp3" type="audio/mpeg">
+        O seu navegador não suporta áudio.
+    </audio>
+
+    <!-- Menu HUD Superior -->
+    <header>
+        <div class="logo-text" data-i18n="logo">WELLINGTON DAMASCENO // SOFTWARE ENGINEER & QA</div>
+        
+        <div class="hud-controls">
+            <button class="hud-btn" id="audioToggleBtn" onclick="toggleAudio()">🎵 AUDIO: OFF</button>
+            
+            <div class="visualizer-container" title="Visualizador de Espectro">
+                <canvas id="audioVisualizer" width="90" height="25"></canvas>
+            </div>
+
+            <button class="hud-btn" id="autoColorBtn" onclick="toggleAutoColor()">🌈 RAINBOW: ON</button>
+            
+            <!-- Seletor de Idioma Integrado -->
+            <select id="langSelect" class="lang-select" onchange="changeLanguage(this.value)">
+                <option value="pt">🌐 PT</option>
+                <option value="en">🌐 EN</option>
+                <option value="es">🌐 ES</option>
+                <option value="fr">🌐 FR</option>
+                <option value="de">🌐 DE</option>
+                <option value="ja">🌐 JA</option>
+            </select>
+        </div>
+
+        <div class="status-indicator">
+            <div class="pulse-dot"></div>
+            <span>ONLINE</span>
+        </div>
+
+        <nav>
+            <ul>
+                <li><a href="#sobre" data-i18n="navProfile">PERFIL</a></li>
+                <li><a href="#experiencia" data-i18n="navExp">EXPERIÊNCIA</a></li>
+                <li><a href="#certificacoes" data-i18n="navCerts">CERTIFICAÇÕES</a></li>
+                <li><a href="#personalidade" data-i18n="navPsych">PSICO</a></li>
+                <li><a href="#tech" data-i18n="navStack">STACK</a></li>
+                <li><a href="#social" data-i18n="navSocial">SOCIAL</a></li>
+                <li><a href="#contato" data-i18n="navComms">CONTATO</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <!-- Grade Mestra -->
+    <div class="dashboard-grid">
+
+        <!-- 1. Core Profile & Academics -->
+        <section id="sobre" class="glass-card">
+            <h2><span>01.</span> <span data-i18n="sec1Title">Core Profile & Academics</span></h2>
+            <p data-i18n="sec1Desc">
+                Profissional com sólida trajetória em garantia da qualidade e controlo de processos industriais. 
+                Estudante de <strong>Engenharia de Software</strong> na Uninter (Previsão: Ago/2029) e Técnico em Química pelo CEPROVI (Vinhedo/SP). 
+                Residente em Jaraguá, São Paulo/SP.
+            </p>
+            <div class="skills-container">
+                <button class="badge" onclick="inspectTrait('Software Engineering: Bacharelado em andamento na Uninter com foco em arquitetura limpa e desenvolvimento escalável.')">Software Engineering (Uninter)</button>
+                <button class="badge amber" onclick="inspectTrait('CEPROVI Chemistry: Qualificação técnica industrial com forte base analítica em Vinhedo/SP.')">Técnico em Química (CEPROVI)</button>
+                <button class="badge" onclick="inspectTrait('English Course: Desenvolvimento contínuo de inglês intermediário voltado para documentação técnica.')">English (Em andamento)</button>
+            </div>
+        </section>
+
+        <!-- 2. Professional Timeline -->
+        <section id="experiencia" class="glass-card">
+            <h2><span>02.</span> <span data-i18n="sec2Title">Professional Timeline</span></h2>
+            <div class="timeline-item">
+                <p><strong data-i18n="sec2Role">Analista de Qualidade Jr.</strong><br><span data-i18n="sec2Company">Holcasher Foods</span> <span style="font-size:0.72rem; color:var(--accent-primary);">(Mar/2022 - Out/2025)</span></p>
+                <p style="font-size:0.8rem; margin-top:4px;" data-i18n="sec2Desc">
+                    Governança documental, auditorias internas/externas, conformidade BPF, FIFO, TACCP e BRC. 
+                    Aplicação de protocolos HACCP/APPCC para mitigação de riscos e liderança operacional de equipas fabris.
+                </p>
+            </div>
+        </section>
+
+        <!-- 3. Certifications & Quality Standards -->
+        <section id="certificacoes" class="glass-card">
+            <h2><span>03.</span> <span data-i18n="sec3Title">Certifications & Industrial Norms</span></h2>
+            <p data-i18n="sec3Desc">Certificações profissionais oficiais e conformidade com normas globais:</p>
+            <div class="skills-container" style="margin-top: 10px;">
+                <button class="badge" onclick="inspectTrait('Scrum Fundamentals (SFCTM): Domínio de metodologias ágeis pela SCRUMstudy.')">Scrum Fundamentals (SFCTM)</button>
+                <button class="badge" onclick="inspectTrait('Scrum for Operations & DevOps (SODFC): Aplicação de agilidade em infraestrutura e operações.')">Scrum for Ops & DevOps</button>
+                <button class="badge amber" onclick="inspectTrait('Six Sigma Yellow Belt (SSYB): Metodologia Lean para melhoria contínua e otimização.')">Six Sigma Yellow Belt</button>
+                <button class="badge" onclick="inspectTrait('Business Analysis (BAFC): Análise de negócios focada em requisitos e processos.')">Business Analysis (BAFC)</button>
+                <button class="badge amber" onclick="inspectTrait('Kanban Essentials (KEC): Gestão visual de fluxos de trabalho.')">Kanban Essentials (KEC)</button>
+                <button class="badge" onclick="inspectTrait('OKR Fundamentals (OKRFC): Gestão estratégica orientada a objetivos e resultados-chave.')">OKR Fundamentals (OKRFC)</button>
+                <button class="badge amber" onclick="inspectTrait('GFT Quality Assurance: Capacitação avançada em testes e garantia de qualidade de software.')">GFT QA Program</button>
+                <button class="badge" onclick="inspectTrait('Normas Industriais: HACCP/APPCC, BPF, BRC, TACCP e FIFO.')">HACCP / BPF / BRC / TACCP</button>
+            </div>
+        </section>
+
+        <!-- 4. Behavioral & Personality Matrix -->
+        <section id="personalidade" class="glass-card">
+            <h2><span>04.</span> <span data-i18n="sec4Title">Behavioral & Personality Matrix</span></h2>
+            <p data-i18n="sec4Desc">
+                <strong>Perfil ENTJ (O Comandante) & Temperamento Colérico-Melancólico</strong><br>
+                Focado em liderança sistémica, rigor analítico-estratégico e eliminação implacável de gargalos operacionais.
+            </p>
+            <ul style="list-style: none; display: flex; flex-direction: column; gap: 6px; margin-top: 8px;" data-i18n="sec4List">
+                🧠 <strong>Traços Psicológicos:</strong> Determinação e iniciativa implacável (Colérico) combinadas com profundo rigor técnico, perfeccionismo e visão detalhada (Melancólico).<br>
+                ⚡ <strong>Estilo de Trabalho:</strong> Planeamento estratégico de longo prazo, foco absoluto na excelência de processos e engenharia limpa.
+            </ul>
+            <div class="skills-container">
+                <button class="badge" onclick="inspectTrait('ENTJ Comandante: Liderança orientada a comandos estratégicos e eficiência máxima.')">ENTJ Comandante</button>
+                <button class="badge amber" onclick="inspectTrait('Colérico-Melancólico: Fusão de ambição executiva e iniciativa com alto rigor analítico e precisão.')">Colérico-Melancólico</button>
+                <button class="badge" onclick="inspectTrait('Strategic Mindset: Capacidade de antecipar riscos e planear arquiteturas escaláveis.')">Strategic Mindset</button>
+            </div>
+        </section>
+
+        <!-- 5. Tech Stack -->
+        <section id="tech" class="glass-card">
+            <h2><span>05.</span> <span data-i18n="sec5Title">Full Ecosystem & Tech Stack</span></h2>
+            <p data-i18n="sec5Desc">Ecossistema tecnológico completo para desenvolvimento, QA e automação:</p>
+            <div class="skills-container" style="margin-top: 10px;">
+                <button class="badge" onclick="inspectTrait('Python: Linguagem principal para automação de tarefas, IA, bots e backends rápidos.')">Python</button>
+                <button class="badge amber" onclick="inspectTrait('Java & JavaScript / TypeScript: Desenvolvimento robusto e aplicações web modernas.')">Java & TypeScript</button>
+                <button class="badge" onclick="inspectTrait('Node.js & React.js: Criação de aplicações full-stack eficientes e interfaces reativas.')">Node.js & React.js</button>
+                <button class="badge amber" onclick="inspectTrait('PostgreSQL / SQL: Gestão avançada de bases de dados relacionais.')">PostgreSQL / SQL</button>
+                <button class="badge" onclick="inspectTrait('FastAPI: APIs de alta performance assíncronas em Python.')">FastAPI</button>
+                <button class="badge amber" onclick="inspectTrait('Selenium WebDriver, Cypress, Cucumber & Playwright: Automação avançada de testes E2E.')">Selenium, Cypress & Playwright</button>
+                <button class="badge" onclick="inspectTrait('Postman & Jira: Gestão de testes de API e rastreamento ágil de issues.')">Postman & Jira</button>
+                <button class="badge amber" onclick="inspectTrait('Docker & Git / GitHub Actions: Isolamento de ambientes e pipelines de CI/CD automatizados.')">Docker & CI/CD</button>
+                <button class="badge" onclick="inspectTrait('n8n Workflows: Automação avançada de fluxos de trabalho e integrações.')">n8n Workflows</button>
+                <button class="badge amber" onclick="inspectTrait('Linux (Nobara OS): Sistema operativo principal otimizado para programação.')">Linux (Nobara OS)</button>
+            </div>
+        </section>
+
+        <!-- 6. Social Links -->
+        <section id="social" class="glass-card">
+            <h2><span>06.</span> <span data-i18n="sec6Title">Social & Network Uplinks</span></h2>
+            <p data-i18n="sec6Desc">Canais oficiais de contacto e redes profissionais:</p>
+            
+            <div class="social-links-grid">
+                <a href="https://github.com/WellingtonPaulo999-Beep" target="_blank" class="social-btn">
+                    🐙 GITHUB CORE
+                </a>
+                <a href="https://www.linkedin.com/in/wellington-f-1aa4b421a" target="_blank" class="social-btn">
+                    💼 LINKEDIN
+                </a>
+                <a href="https://www.instagram.com/wd_dev_/" target="_blank" class="social-btn">
+                    📸 INSTAGRAM
+                </a>
+            </div>
+            <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 12px;">
+                📍 Jaraguá, São Paulo/SP &bull;
+            </p>
+        </section>
+
+        <!-- 7. Terminal CLI -->
+        <section id="terminal" class="glass-card">
+            <h2><span>07.</span> <span data-i18n="sec7Title">Ultron Command Line</span></h2>
+            <p data-i18n="sec7Hint">Cmds: <strong>help</strong>, <strong>skills</strong>, <strong>certs</strong>, <strong>social</strong>, <strong>status</strong>, <strong>clear</strong></p>
+            
+            <div class="cli-container">
+                <div class="cli-output" id="cliOutput" data-i18n="cliWelcome">Wellington Damasceno hud-btn Online. As 7 cores ativadas...</div>
+                <div class="cli-input-line">
+                    <span class="cli-prompt">wellington@hud:~$</span>
+                    <input type="text" id="cliInput" class="cli-input" placeholder="digite..." autocomplete="off">
+                </div>
+            </div>
+        </section>
+
+        <!-- 8. Transmission Uplink -->
+        <section id="contato" class="glass-card">
+            <h2><span>08.</span> <span data-i18n="sec8Title">Transmission Uplink</span></h2>
+            <p><span data-i18n="sec8Desc">Conexão direta ou via</span> <a href="https://www.linkedin.com/in/wellington-f-1aa4b421a" target="_blank" style="color: var(--accent-primary);">LinkedIn Profile</a>.</p>
+            
+            <form id="formContato">
+                <div>
+                    <label for="nome" data-i18n="labelName">IDENTITY (NOME)</label>
+                    <input type="text" id="nome" name="nome" placeholder="O seu nome..." required>
+                </div>
+                <div>
+                    <label for="email" data-i18n="labelEmail">CHANNEL (E-MAIL)</label>
+                    <input type="email" id="email" name="email" placeholder="o.seu@email.com" required>
+                </div>
+                <div>
+                    <label for="mensagem" data-i18n="labelMsg">PAYLOAD (MENSAGEM)</label>
+                    <textarea id="mensagem" name="mensagem" rows="2" placeholder="A sua mensagem..." required></textarea>
+                </div>
+                <button type="submit" data-i18n="submitBtn">TRANSMITIR DADOS ⚡</button>
+            </form>
+        </section>
+
+    </div>
+
+    <footer>
+        <p>&copy; 2026 Wellington Damasceno &bull; <span data-i18n="footerText">Software Engineer & QA iOS Rainbow HUD</span> &bull; <a href="https://www.linkedin.com/in/wellington-f-1aa4b421a" target="_blank">LinkedIn Profile</a></p>
+    </footer>
+
+    <script>
+        // Dicionário de Traduções Completas
+        const translations = {
+            pt: {
+                logo: "WELLINGTON DAMASCENO // SOFTWARE ENGINEER & QA",
+                navProfile: "PERFIL", navExp: "EXPERIÊNCIA", navCerts: "CERTIFICAÇÕES", navPsych: "PSICO", navStack: "STACK", navSocial: "SOCIAL", navComms: "CONTATO",
+                sec1Title: "Core Profile & Academics",
+                sec1Desc: 'Profissional com sólida trajetória em garantia da qualidade e controlo de processos industriais. Estudante de <strong>Engenharia de Software</strong> na Uninter (Previsão: Ago/2029) e Técnico em Química pelo CEPROVI (Vinhedo/SP). Residente em Jaraguá, São Paulo/SP.',
+                sec2Title: "Professional Timeline",
+                sec2Role: "Analista de Qualidade Jr.",
+                sec2Company: "Holcasher Foods",
+                sec2Desc: 'Governança documental, auditorias internas/externas, conformidade BPF, FIFO, TACCP e BRC. Aplicação de protocolos HACCP/APPCC para mitigação de riscos e liderança operacional de equipas fabris.',
+                sec3Title: "Certifications & Industrial Norms",
+                sec3Desc: "Certificações profissionais oficiais e conformidade com normas globais:",
+                sec4Title: "Behavioral & Personality Matrix",
+                sec4Desc: '<strong>Perfil ENTJ (O Comandante) & Temperamento Colérico-Melancólico</strong><br>Focado em liderança sistémica, rigor analítico-estratégico e eliminação implacável de gargalos operacionais.',
+                sec4List: '🧠 <strong>Traços Psicológicos:</strong> Determinação e iniciativa implacável (Colérico) combinadas com profundo rigor técnico, perfeccionismo e visão detalhada (Melancólico).<br>⚡ <strong>Estilo de Trabalho:</strong> Planeamento estratégico de longo prazo, foco absoluto na excelência de processos e engenharia limpa.',
+                sec5Title: "Full Ecosystem & Tech Stack",
+                sec5Desc: "Ecossistema tecnológico completo para desenvolvimento, QA e automação:",
+                sec6Title: "Social & Network Uplinks",
+                sec6Desc: "Canais oficiais de contacto e redes profissionais:",
+                sec7Title: "Ultron Command Line",
+                sec7Hint: 'Cmds: <strong>help</strong>, <strong>skills</strong>, <strong>certs</strong>, <strong>social</strong>, <strong>status</strong>, <strong>clear</strong>',
+                cliWelcome: "Wellington DamascenoHUD Online. As 7 cores do arco-íris ativadas...",
+                sec8Title: "Transmission Uplink",
+                sec8Desc: "Conexão direta ou via",
+                labelName: "IDENTITY (NOME)",
+                labelEmail: "CHANNEL (E-MAIL)",
+                labelMsg: "PAYLOAD (MENSAGEM)",
+                submitBtn: "TRANSMITIR DADOS ⚡",
+                footerText: "Software Engineer & QA iOS Glass HUD"
+            },
+            en: {
+                logo: "WELLINGTON DAMASCENO // SOFTWARE ENGINEER & QA",
+                navProfile: "PROFILE", navExp: "EXP", navCerts: "CERTS", navPsych: "PSYCH", navStack: "STACK", navSocial: "SOCIAL", navComms: "COMMS",
+                sec1Title: "Core Profile & Academics",
+                sec1Desc: 'Professional with a solid track record in quality assurance and industrial process control. Software Engineering student at Uninter (Expected: Aug/2029) and Chemical Technician by CEPROVI (Vinhedo/SP). Resident in Jaraguá, São Paulo/SP.',
+                sec2Title: "Professional Timeline",
+                sec2Role: "Junior Quality Analyst",
+                sec2Company: "Holcasher Foods",
+                sec2Desc: 'Documentary governance, internal/external audits, GMP, FIFO, TACCP and BRC compliance. Application of HACCP protocols for risk mitigation and operational leadership of production teams.',
+                sec3Title: "Certifications & Industrial Norms",
+                sec3Desc: "Official professional certifications and compliance with global standards:",
+                sec4Title: "Behavioral & Personality Matrix",
+                sec4Desc: '<strong>ENTJ Profile (The Commander) & Choleric-Melancholic Temperament</strong><br>Focused on systemic leadership, analytical-strategic rigor, and ruthless elimination of operational bottlenecks.',
+                sec4List: '🧠 <strong>Psychological Traits:</strong> Relentless drive and initiative (Choleric) combined with deep technical rigor, perfectionism, and detail-oriented vision (Melancholic).<br>⚡ <strong>Work Style:</strong> Long-term strategic planning, absolute focus on process excellence, and clean engineering.',
+                sec5Title: "Full Ecosystem & Tech Stack",
+                sec5Desc: "Complete technological ecosystem for development, QA, and automation:",
+                sec6Title: "Social & Network Uplinks",
+                sec6Desc: "Official contact channels and professional networks:",
+                sec7Title: "Ultron Command Line",
+                sec7Hint: 'Cmds: <strong>help</strong>, <strong>skills</strong>, <strong>certs</strong>, <strong>social</strong>, <strong>status</strong>, <strong>clear</strong>',
+                cliWelcome: "Wellington DamascenoHUD Online. 7 rainbow colors activated...",
+                sec8Title: "Transmission Uplink",
+                sec8Desc: "Direct connection or via",
+                labelName: "IDENTITY (NAME)",
+                labelEmail: "CHANNEL (EMAIL)",
+                labelMsg: "PAYLOAD (MESSAGE)",
+                submitBtn: "TRANSMIT DATA ⚡",
+                footerText: "Software Engineer & QA iOS Glass HUD"
+            },
+            es: {
+                logo: "WELLINGTON DAMASCENO // SOFTWARE ENGINEER & QA",
+                navProfile: "PROFILE", navExp: "EXP", navCerts: "CERTS", navPsych: "PSYCH", navStack: "STACK", navSocial: "SOCIAL", navComms: "COMMS",
+                sec1Title: "Perfil Principal y Académico",
+                sec1Desc: 'Profesional con sólida trayectoria en control de calidad y procesos industriales. Estudiante de <strong>Ingeniería de Software</strong> en Uninter y Técnico Químico por CEPROVI. Residente en São Paulo/SP.',
+                sec2Title: "Línea de Tiempo Profesional",
+                sec2Role: "Analista de Calidad Jr.",
+                sec2Company: "Holcasher Foods",
+                sec2Desc: 'Gobernanza documental, auditorías, cumplimiento BPF, FIFO, TACCP y BRC. Aplicación de protocolos HACCP/APPCC para mitigación de riesgos.',
+                sec3Title: "Certificaciones y Normas Industriales",
+                sec3Desc: "Certificaciones profesionales oficiales y cumplimiento de estándares globales:",
+                sec4Title: "Matriz de Comportamiento y Personalidad",
+                sec4Desc: '<strong>Perfil ENTJ & Temperamento Colérico-Melancólico</strong><br>Enfocado en liderazgo sistémico, rigor analítico-estratégico y automatización.',
+                sec4List: '🧠 <strong>Rasgos Psicológicos:</strong> Determinación e iniciativa implacable (Colérico) combinadas con profundo rigor técnico y perfeccionismo (Melancólico).<br>⚡ <strong>Estilo de Trabajo:</strong> Planificación estratégica y excelencia en procesos.',
+                sec5Title: "Ecosistema Técnico",
+                sec5Desc: "Ecosistema tecnológico completo para desarrollo, QA y automatización:",
+                sec6Title: "Enlaces Sociales",
+                sec6Desc: "Canales oficiales de contacto y redes profesionales:",
+                sec7Title: "Línea de Comandos Ultron",
+                sec7Hint: 'Cmds: <strong>help</strong>, <strong>skills</strong>, <strong>certs</strong>, <strong>social</strong>, <strong>status</strong>, <strong>clear</strong>',
+                cliWelcome: "Wellington DamascenoHUD Online. 7 colores del arcoíris activados...",
+                sec8Title: "Enlace de Transmisión",
+                sec8Desc: "Conexión directa o vía",
+                labelName: "IDENTIDAD (NOMBRE)",
+                labelEmail: "CANAL (CORREO)",
+                labelMsg: "CARGA (MENSAJE)",
+                submitBtn: "TRANSMITIR DATOS ⚡",
+                footerText: "Software Engineer & QA iOS Glass HUD"
+            },
+            fr: {
+                logo: "WELLINGTON DAMASCENO // SOFTWARE ENGINEER & QA",
+                navProfile: "PROFILE", navExp: "EXP", navCerts: "CERTS", navPsych: "PSYCH", navStack: "STACK", navSocial: "SOCIAL", navComms: "COMMS",
+                sec1Title: "Profil Principal & Académique",
+                sec1Desc: 'Professionnel avec un solide parcours en assurance qualité et contrôle des processus industriels. Étudiant en <strong>Ingénierie Logicielle</strong> à Uninter et Technicien Chimiste. Résident à São Paulo/SP.',
+                sec2Title: "Parcours Professionnel",
+                sec2Role: "Analyste Qualité Jr.",
+                sec2Company: "Holcasher Foods",
+                sec2Desc: 'Gouvernance documentaire, audits, conformité BPF, FIFO, TACCP et BRC. Application des protocoles HACCP.',
+                sec3Title: "Certifications & Normes Industrielles",
+                sec3Desc: "Certifications professionnelles officielles et conformité mondiale :",
+                sec4Title: "Matrice Comportementale",
+                sec4Desc: '<strong>Profil ENTJ & Tempérament Colérique-Mélancolique</strong><br>Axé sur le leadership systémique, la rigueur analytique et l\'automatisation.',
+                sec4List: '🧠 <strong>Traits Psychologiques:</strong> Détermination implacable (Colérique) combinée à une rigueur technique et un perfectionnisme (Mélancolique).<br>⚡ <strong>Style de Travail:</strong> Planification stratégique et ingénierie propre.',
+                sec5Title: "Écosystème Technique",
+                sec5Desc: "Écosystème technologique complet pour le développement, le QA et l'automatisation :",
+                sec6Title: "Liens Sociaux",
+                sec6Desc: "Canaux de contact officiels :",
+                sec7Title: "Ligne de Commande Ultron",
+                sec7Hint: 'Cmds: <strong>help</strong>, <strong>skills</strong>, <strong>certs</strong>, <strong>social</strong>, <strong>status</strong>, <strong>clear</strong>',
+                cliWelcome: "Wellington DamascenoHUD Online. 7 couleurs de l'arc-en-ciel activées...",
+                sec8Title: "Lien de Transmission",
+                sec8Desc: "Connexion directe ou via",
+                labelName: "IDENTITÉ (NOM)",
+                labelEmail: "CANAL (E-MAIL)",
+                labelMsg: "CHARGE (MESSAGE)",
+                submitBtn: "TRANSMETTRE ⚡",
+                footerText: "Software Engineer & QA iOS Glass HUD"
+            },
+            de: {
+                logo: "WELLINGTON DAMASCENO // SOFTWARE ENGINEER & QA",
+                navProfile: "PROFILE", navExp: "EXP", navCerts: "CERTS", navPsych: "PSYCH", navStack: "STACK", navSocial: "SOCIAL", navComms: "COMMS",
+                sec1Title: "Kernprofil & Akademisches",
+                sec1Desc: 'Fachmann mit solider Erfahrung in Qualitätssicherung und industrieller Prozesssteuerung. Software-Engineering-Student bei Uninter und Chemietechniker. Wohnhaft in São Paulo/SP.',
+                sec2Title: "Beruflicher Werdegang",
+                sec2Role: "Junior Qualitätsanalyst",
+                sec2Company: "Holcasher Foods",
+                sec2Desc: 'Dokumenten-Governance, Audits, GMP, FIFO, TACCP und BRC-Konformität. Anwendung von HACCP-Protokollen.',
+                sec3Title: "Zertifizierungen & Industriestandards",
+                sec3Desc: "Offizielle professionelle Zertifizierungen:",
+                sec4Title: "Verhaltens- & Persönlichkeitsmatrix",
+                sec4Desc: '<strong>ENTJ Profil & Cholerisch-Melancholisches Temperament</strong><br>Fokus auf systemische Führung, analytische Strenge und Prozessgenauigkeit.',
+                sec4List: '🧠 <strong>Psychologische Merkmale:</strong> Zielstrebigkeit (Cholerisch) kombiniert mit technischer Strenge und Perfektionismus (Melancholisch).<br>⚡ <strong>Arbeitsstil:</strong> Strategische Planung und saubere Technik.',
+                sec5Title: "Technisches Ökosystem",
+                sec5Desc: "Vollständiges technologisches Ökosystem für Entwicklung, QA und Automatisierung:",
+                sec6Title: "Soziale Netzwerke",
+                sec6Desc: "Offizielle Kontaktkanäle:",
+                sec7Title: "Ultron Befehlszeile",
+                sec7Hint: 'Cmds: <strong>help</strong>, <strong>skills</strong>, <strong>certs</strong>, <strong>social</strong>, <strong>status</strong>, <strong>clear</strong>',
+                cliWelcome: "Wellington DamascenoHUD Online. Die 7 Regenbogenfarben aktiviert...",
+                sec8Title: "Übertragungsverbindung",
+                sec8Desc: "Direkte Verbindung oder über",
+                labelName: "IDENTITÄT (NAME)",
+                labelEmail: "KANAL (E-MAIL)",
+                labelMsg: "NUTZLAST (NACHRICHT)",
+                submitBtn: "DATEN ÜBERTRAGEN ⚡",
+                footerText: "Software Engineer & QA Wellington DamascenoHUD"
+            },
+            ja: {
+                logo: "WELLINGTON DAMASCENO // SOFTWARE ENGINEER & QA",
+                navProfile: "PROFILE", navExp: "EXP", navCerts: "CERTS", navPsych: "PSYCH", navStack: "STACK", navSocial: "SOCIAL", navComms: "COMMS",
+                sec1Title: "コアプロフィール・学歴",
+                sec1Desc: '品質保証および産業プロセスの制御において確固たる実績を持つ専門家。Uninterのソフトウェア工学専攻。サンパウロ在住。',
+                sec2Title: "職歴タイムライン",
+                sec2Role: "ジュニア品質アナリスト",
+                sec2Company: "Holcasher Foods",
+                sec2Desc: '文書管理、監査、GMP、FIFO、TACCP、BRCコンプライアンス。HACCPプロトコルの適用によるリスク軽減。',
+                sec3Title: "資格・産業基準",
+                sec3Desc: "公式プロフェッショナル認定およびグローバル基準への適合：",
+                sec4Title: "行動・パーソナリティマトリックス",
+                sec4Desc: '<strong>ENTJプロフィール ＆ 胆汁質・憂鬱質気質</strong><br>システム的リーダーシップ、分析的厳格さ、プロセスの最適化に特化。',
+                sec4List: '🧠 <strong>心理的特徴：</strong> 強い実行力（胆汁質）と、高度な技術的厳密さ・完全主義（憂鬱質）の融合。<br>⚡ <strong>作業スタイル：</strong> 長期的戦略計画とプロセスの卓越性。',
+                sec5Title: "テックスタック",
+                sec5Desc: "開発、QA、自動化のための完全な技術エコシステム：",
+                sec6Title: "ソーシャルリンク",
+                sec6Desc: "公式連絡先およびプロフェッショナルネットワーク：",
+                sec7Title: "ウルトロンコマンドライン",
+                sec7Hint: 'Cmds: <strong>help</strong>, <strong>skills</strong>, <strong>certs</strong>, <strong>social</strong>, <strong>status</strong>, <strong>clear</strong>',
+                cliWelcome: "Wellington DamascenoHUD Online. 7つの虹色が有効化...",
+                sec8Title: "データ送信リンク",
+                sec8Desc: "直接接続または",
+                labelName: "ID（名前）",
+                labelEmail: "チャンネル（メール）",
+                labelMsg: "ペイロード（メッセージ）",
+                submitBtn: "データを送信 ⚡",
+                footerText: "Software Engineer & QA Wellington DamascenoHUD"
+            }
+        };
+
+        function changeLanguage(lang) {
+            const t = translations[lang] || translations.pt;
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (t[key]) {
+                    el.innerHTML = t[key];
+                }
+            });
+        }
+
+        // Transmissão funcional integrada via cliente de e-mail nativo (Mailto)
+        document.getElementById('formContato').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const nome = document.getElementById('nome').value;
+            const emailRemetente = document.getElementById('email').value;
+            const mensagem = document.getElementById('mensagem').value;
+            const cliOutput = document.getElementById('cliOutput');
+            
+            const meuEmail = "wellingtonpaulo999@gmail.com";
+            
+            const subject = encodeURIComponent(`[Wellington DamascenoHUD Uplink] Mensagem de ${nome}`);
+            const body = encodeURIComponent(`Nome: ${nome}\nE-mail de Contato: ${emailRemetente}\n\nMensagem:\n${mensagem}`);
+            
+            window.location.href = `mailto:${meuEmail}?subject=${subject}&body=${body}`;
+            
+            if (cliOutput) {
+                cliOutput.textContent += `\n[TRANSMISSION_SUCCESS] Cliente de e-mail acionado para envio a ${meuEmail}!`;
+                cliOutput.scrollTop = cliOutput.scrollHeight;
+            }
+        });
+
+        // Função para inspecionar traços e competências clicadas nos botões/badges
+        function inspectTrait(msg) {
+            const cliOutput = document.getElementById('cliOutput');
+            if (cliOutput) {
+                cliOutput.textContent += `\n[HUD_DIAGNOSTIC] ${msg}`;
+                cliOutput.scrollTop = cliOutput.scrollHeight;
+            }
+        }
+
+        // Chuva Matrix Dinâmica
+        const rainCanvas = document.getElementById('matrixRain');
+        const rainCtx = rainCanvas.getContext('2d');
+
+        function resizeRainCanvas() {
+            rainCanvas.width = window.innerWidth;
+            rainCanvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeRainCanvas);
+        resizeRainCanvas();
+
+        const katakana = 'アァカサタナハマヤャラワガザダバパイィキシチニヒミリヰギジヂビピウゥクスツヌフムユュルグズブヅプエェケセテネヘメレヱゲゼデベペオォコソトノホモヨョロヲゴゾドボポヴッン';
+        const latin = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        const alphabet = katakana + latin;
+
+        const fontSize = 14;
+        let columns = rainCanvas.width / fontSize;
+        const rainDrops = [];
+        for (let x = 0; x < columns; x++) { rainDrops[x] = 1; }
+
+        function drawMatrixRain() {
+            rainCtx.fillStyle = 'rgba(0, 0, 0, 0.08)';
+            rainCtx.fillRect(0, 0, rainCanvas.width, rainCanvas.height);
+            rainCtx.fillStyle = getComputedStyle(document.body).getPropertyValue('--accent-primary').trim() || '#ff3b30';
+            rainCtx.font = fontSize + 'px monospace';
+
+            for (let i = 0; i < rainDrops.length; i++) {
+                const text = alphabet.charAt(Math.floor(Math.random() * alphabet.length));
+                rainCtx.fillText(text, i * fontSize, rainDrops[i] * fontSize);
+                if (rainDrops[i] * fontSize > rainCanvas.height && Math.random() > 0.975) { rainDrops[i] = 0; }
+                rainDrops[i]++;
+            }
+        }
+        setInterval(drawMatrixRain, 35);
+
+        // Sistema de 7 Cores do Arco-Íris Automáticas (Muda a cada 7 segundos)
+        let autoColorActive = true;
+        let themeIndex = 0;
+        const themes = ['theme-red', 'theme-orange', 'theme-yellow', 'theme-green', 'theme-blue', 'theme-indigo', 'theme-violet'];
+        const themeNames = ['🔴 RED', '🟠 ORANGE', '🟡 YELLOW', '🟢 GREEN', '🔵 BLUE', '🟣 INDIGO', '🔮 VIOLET'];
+
+        function cycleThemes() {
+            if (!autoColorActive) return;
+            themeIndex = (themeIndex + 1) % themes.length;
+            document.body.className = themes[themeIndex];
+            const btn = document.getElementById('autoColorBtn');
+            if (btn) btn.textContent = `🌈 ${themeNames[themeIndex]}`;
+        }
+
+        let autoColorTimer = setInterval(cycleThemes, 7000);
+
+        function toggleAutoColor() {
+            autoColorActive = !autoColorActive;
+            const btn = document.getElementById('autoColorBtn');
+            if (autoColorActive) {
+                btn.style.borderColor = "var(--accent-primary)";
+                btn.textContent = `🌈 ${themeNames[themeIndex]}`;
+            } else {
+                btn.style.borderColor = "rgba(255,255,255,0.2)";
+                btn.textContent = "🌈 RAINBOW: OFF";
+            }
+        }
+
+        // Controlo de Áudio Robusto e Visualizador Dinâmico
+        const bgMusic = document.getElementById('bgMusic');
+        const audioToggleBtn = document.getElementById('audioToggleBtn');
+        const canvas = document.getElementById('audioVisualizer');
+        const ctx = canvas.getContext('2d');
+        let isPlaying = false;
+
+        function toggleAudio() {
+            if (isPlaying) {
+                bgMusic.pause();
+                audioToggleBtn.textContent = "🎵 AUDIO: OFF";
+                audioToggleBtn.style.borderColor = "var(--glass-border)";
+                isPlaying = false;
+            } else {
+                bgMusic.play().then(() => {
+                    audioToggleBtn.textContent = "🔊 AUDIO: ON";
+                    audioToggleBtn.style.borderColor = "var(--terminal-color)";
+                    isPlaying = true;
+                }).catch(err => {
+                    console.log("Erro de reprodução:", err);
+                    alert("Erro: Certifique-se de que o ficheiro 'ultron musica.mp3' está na mesma pasta do index.html.");
+                });
+            }
+        }
+
+        // Animação do Visualizador CAVA
+        function visualize() {
+            requestAnimationFrame(visualize);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const barCount = 8;
+            const barWidth = (canvas.width / barCount) - 2;
+            let x = 0;
+
+            for (let i = 0; i < barCount; i++) {
+                const barHeight = isPlaying ? Math.random() * (canvas.height - 4) + 4 : 4;
+                ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--accent-primary').trim() || '#ff3b30';
+                ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+                x += barWidth + 2;
+            }
+        }
+        visualize();
+
+        // Terminal CLI
+        const cliInput = document.getElementById('cliInput');
+        const cliOutput = document.getElementById('cliOutput');
+
+        if (cliInput) {
+            cliInput.addEventListener('keydown', function(event) {
+                if (event.key === 'Enter') {
+                    const cmd = cliInput.value.trim().toLowerCase();
+                    let response = `\n> ${cliInput.value}\n`;
+
+                    if (cmd === 'help') {
+                        response += "Comandos:\n - skills\n - certs\n - social\n - status\n - rainbow\n - clear";
+                    } else if (cmd === 'skills') {
+                        response += "Stack: Python, Java, JS, TS, Node, React, SQL, FastAPI, Selenium, Cypress, Playwright, Postman, Jira, Docker, Git, n8n, Linux.";
+                    } else if (cmd === 'certs') {
+                        response += "Certs: Scrum Fundamentals, Scrum for Ops/DevOps, Six Sigma Yellow Belt, Business Analysis, Kanban, OKRs, GFT QA.";
+                    } else if (cmd === 'social') {
+                        response += "LinkedIn: linkedin.com/in/wellington-f-1aa4b421a\nEmail: wellingtonpaulo999@gmail.com";
+                    } else if (cmd === 'status') {
+                        response += "SYSTEM STATUS: 100% Operacional. Arco-íris de 7 cores ativo.";
+                    } else if (cmd === 'rainbow') {
+                        toggleAutoColor();
+                        response += `Ciclo do arco-íris: ${autoColorActive ? 'ATIVO' : 'DESLIGADO'}.`;
+                    } else if (cmd === 'clear') {
+                        cliOutput.textContent = "Terminal limpo.";
+                        cliInput.value = '';
+                        return;
+                    } else if (cmd === '') {
+                        response += "";
+                    } else {
+                        response += `Comando inválido: '${cmd}'. Digite 'help'.`;
+                    }
+
+                    cliOutput.textContent += "\n" + response;
+                    cliOutput.scrollTop = cliOutput.scrollHeight;
+                    cliInput.value = '';
+                }
+            });
+        }
+    </script>
+</body>
+</html>
